@@ -2,7 +2,7 @@ import { Router } from "express";
 import { query } from "../db/index.js";
 import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
-import verify from "../services/google_signin.js";
+import verify from "../services/googleSignin.js";
 
 const router = new Router();
 
@@ -63,7 +63,8 @@ router.post('/signin', async (request, response) => {
             else return response.json({ result: "error", message: "email matched but password did not match" });
         }
         else if (auth_provider === 'google') {
-            //
+            // console.log();
+            await verify(request.body.code.code);
         }
     } catch (error) {
         console.log(error);
