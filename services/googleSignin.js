@@ -13,8 +13,7 @@ async function verify(code) {
 
     const payload = ticket.getPayload();
 
-    console.log(payload);
-    
+    return payload;
 }
 
 export default verify;

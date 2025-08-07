@@ -3,6 +3,7 @@ import { query } from "../db/index.js";
 import { hash, compare } from "bcrypt";
 import jwt from "jsonwebtoken";
 import verify from "../services/googleSignin.js";
+import { generateFromEmail } from "unique-username-generator";
 
 const router = new Router();
 
@@ -63,8 +64,35 @@ router.post('/signin', async (request, response) => {
             else return response.json({ result: "error", message: "email matched but password did not match" });
         }
         else if (auth_provider === 'google') {
-            // console.log();
-            await verify(request.body.code.code);
+            const payload = await verify(request.body.code.code);
+            const googleId = payload?.sub;
+            const email = payload?.email;
+            const username = generateFromEmail((payload?.name || "user"), 4);
+
+            const res = await query('SELECT * FROM users WHERE google_id=$1', [googleId]);
+            console.log(res);
+            
+            if (!res.rows[0]) {
+                // user does not exist. Insert him
+                const res2 = await query("INSERT INTO users(username, email, auth_provider, google_id) VALUES ($1, $2, $3, $4)",
+                    [username, email, auth_provider, googleId]
+                );
+
+                if (res2.command === 'INSERT') {
+                    // create JWT and respond
+                    const token = jwt.sign({ "email": email, "username": username }, process.env.JWT_PRIVATE_KEY);
+                    return response
+                        .cookie("user", token, {
+                            httpOnly: true,
+                            secure: true,
+                            sameSite: "None"
+                        })
+                        .status(201)
+                        .json({ "result": "success", "message": "google user inserted", "token": token });
+                }
+
+            }
+
         }
     } catch (error) {
         console.log(error);
